@@ -3,6 +3,8 @@
 
 import pandas as pd
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Load the data
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -67,6 +69,6 @@ print("Delinquent counts:\n", app_df['Delinquent'].value_counts())
 app_df.drop(columns=[app_id_col], inplace=True)
 
 # Save the result if needed
-# app_df.to_csv('credit_delinquency_v2.csv', index=False)
+app_df.to_csv(os.path.join(dataset_path, 'credit_delinquency_v2.csv'), index=False)
 
 print(app_df.head())
