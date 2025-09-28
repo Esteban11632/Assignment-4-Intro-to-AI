@@ -81,3 +81,21 @@ pred_proba_training = model.predict_proba(train_data[cols])[:,1]
 auc_score_training = sklearn.metrics.roc_auc_score(\
     train_labels, pred_proba_training)
 print("Train AUC score: {:.4f}".format(auc_score_training))
+
+# Get feature and their absolute values coefficients
+coefficients = pd.DataFrame({
+    'Feature': cols,
+    'Abs_Coefficient': abs(model.coef_[0])
+})
+
+# Sort the coefficients by absolute value
+coefficients.sort_values(by='Abs_Coefficient', ascending=False, inplace=True)
+
+# Most important features
+print("\nTop 20 Most Important Features:")
+print(coefficients.head(20))
+
+# Look at new ratio columns
+print("\nImportance of Ratio Columns:")
+ratio_features = coefficients[coefficients['Feature'].isin(['C_fraction', '0_fraction', '1_fraction'])]
+print(ratio_features)
