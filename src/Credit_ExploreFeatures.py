@@ -1,15 +1,14 @@
+# Esteban Murillo & Ezequiel Buck
+# Homework 4
+# Intro to AI
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-import os
 import pandas as pd
-
-# Load the data
-current_dir = os.path.dirname(os.path.abspath(__file__))
-dataset_path = os.path.join(current_dir, '..', '..', '..', 'Datasets')
-dataset_path = os.path.normpath(dataset_path)  # Clean up the path
+import os
 
 # Read the CSV files
-df = pd.read_csv(os.path.join(dataset_path, 'credit_delinquency_v2.csv'))
+df = pd.read_csv('credit_delinquency_v2.csv')
 
 fractions = ['C_fraction', '0_fraction', '1_fraction']
 
@@ -17,6 +16,10 @@ fractions = ['C_fraction', '0_fraction', '1_fraction']
 for col in fractions:
     df.hist(column=[col], bins=50)
     plt.title(col)
+    # Save graph only if graphs folder exists
+    if os.path.exists('graphs'):
+        plt.savefig(f'graphs/{col}_histogram.png',
+                    dpi=300, bbox_inches='tight')
     plt.show()
 
 # Are customers with more on-time payments less likely to become delinquent?
@@ -32,4 +35,8 @@ for col in fractions:
     plt.xlabel(f"{col} Intervals")
     plt.ylabel("Delinquency Rate")
     plt.tight_layout()
+    # Save graph only if graphs folder exists
+    if os.path.exists('graphs'):
+        plt.savefig(f'graphs/delinquent_vs_{col}.png',
+                    dpi=300, bbox_inches='tight')
     plt.show()

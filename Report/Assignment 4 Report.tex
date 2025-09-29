@@ -3,42 +3,291 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{graphicx}
-\usepackage[a3paper, margin=1in]{geometry} % Adjust margins here
-\usepackage{float} % For better control of figure placement
-\linespread{1.5} % 1.5 for one and a half spacing
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{minted}
+\linespread{1.5}
 
-\lstdefinelanguage{Scheme}{
-  keywords={define, let, if, cond, lambda, set!, quote, begin, display, newline},
-  sensitive=true,
-  comment=[l]{;;},
-  morestring=[b]",
-}
-
-\lstset{ 
-  basicstyle=\ttfamily,       
-  numbers=left,               
-  numberstyle=\tiny\color{gray},
-  stepnumber=1,               
-  numbersep=5pt,              
-  backgroundcolor=\color{white},
-  showspaces=false,           
-  showstringspaces=false,     
-  showtabs=false,             
-  frame=single,               
-  tabsize=2                   
-}
-
-\title{Assignment 4}
+\title{Homework 4 Report}
 \author{Ezequiel Buck, Esteban Murillo}
+\date{\today}
 
 \begin{document}
 
 \maketitle
 
-\section*{Introduction}
+\section{Part A: Data Preprocessing and Feature Creation}
 
-\section*{Code}
+\subsection{Key Modifications}
 
-\section*{Results}
+\begin{enumerate}
+    \item \textbf{Exclude Status X}: All entries with Status = X are ignored because customers with no loans are neither "good" nor "bad" at paying their loans.
+    
+    \item \textbf{Compute Status Counts}: For each customer, we calculate the total counts of "C", "0", and "1" statuses, as well as total observations (excluding Xs).
+    
+    \item \textbf{Calculate Fractions}: We compute the fraction of observations that are "C", "0", and "1" for each customer:
+    
+\begin{minted}[fontsize=\small, linenos]{python}
+# Group by ID and calculate fractions for each status
+status_fractions = credit_df[credit_df['STATUS'].isin(['C', '0', '1'])].groupby(
+    credit_id_col)['STATUS'].value_counts(normalize=True).unstack(fill_value=0)
 
+# Rename columns to indicate they are fractions
+status_fractions.columns = [f'{col}_fraction' for col in status_fractions.columns]
+
+# Add these new columns to app_df
+app_df = app_df.join(status_fractions, on=app_id_col)
+\end{minted}
+
+    \item \textbf{Delinquency Label}: Compute the "Delinquent" column as before "1" if customer has any statuses equal to "2", "3", "4", or "5", and zero otherwise:
+    
+\begin{minted}[fontsize=\small, linenos]{python}
+def is_delinquent(customer_id):
+    # Define what counts as a delinquent status
+    delinquent_statuses = ['2', '3', '4', '5', 2, 3, 4, 5]
+    
+    # Get all status records for this customer
+    customer_records = credit_df[credit_df[credit_id_col] == customer_id]
+    customer_statuses = customer_records['STATUS']
+    
+    # Check if customer has any delinquent status
+    has_delinquent_status = any(
+        status in delinquent_statuses for status in customer_statuses)
+    
+    # Return 1 if delinquent, 0 if not
+    return int(has_delinquent_status)
+
+# Apply the function to each record
+app_df['Delinquent'] = app_df[app_id_col].apply(is_delinquent)
+\end{minted}
+
+\end{enumerate}
+
+\subsection{Terminal Output}
+
+The program produces the following output showing the data processing:
+
+\begin{verbatim}
+Value counts of the STATUS column: STATUS
+C    442031
+0    383120
+1     11090
+5      1693
+2       868
+3       320
+4       223
+
+Total observations in the credit_df: ID
+5005005    61
+5022730    61
+5061848    61
+5061810    61
+5061741    61
+           ..
+5060177     1
+5099734     1
+5060155     1
+5035790     1
+5135846     1
+
+Delinquent counts:
+ Delinquent
+0    32494
+1      616
+\end{verbatim}
+
+\section{Part B: Feature Exploration}
+
+\subsection{Histograms of Ratio Columns}
+
+We created histograms to show the distribution of the new ratio columns:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/C_fraction_histogram.png}
+    \caption{Histogram of C\_fraction (Closed Account Fractions)}
+    \label{fig:c_hist}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/0_fraction_histogram.png}
+    \caption{Histogram of 0\_fraction (No Payment Due Fractions)}
+    \label{fig:0_hist}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/1_fraction_histogram.png}
+    \caption{Histogram of 1\_fraction (Current Payment Fractions)}
+    \label{fig:1_hist}
+\end{figure}
+
+\subsection{Bar Plots of Delinquency Rates}
+
+We created bar plots showing delinquency rates for customers in different intervals of these ratio columns:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/delinquent_vs_C_fraction.png}
+    \caption{Delinquency Rate vs. C\_fraction Intervals}
+    \label{fig:c_delinquent}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/delinquent_vs_0_fraction.png}
+    \caption{Delinquency Rate vs. 0\_fraction Intervals}
+    \label{fig:0_delinquent}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/delinquent_vs_1_fraction.png}
+    \caption{Delinquency Rate vs. 1\_fraction Intervals}
+    \label{fig:1_delinquent}
+\end{figure}
+
+\subsection{Code for Feature Exploration}
+
+\begin{minted}[fontsize=\small, linenos]{python}
+# Plot bar chart of the C, 0, 1 ratios of the STATUS column
+for col in fractions:
+    df.hist(column=[col], bins=50)
+    plt.title(col)
+    plt.savefig(f'graphs/{col}_histogram.png', dpi=300, bbox_inches='tight')
+    plt.show()
+
+# Plot a bar chart of the Delinquent vs. the fractions
+for col in fractions:
+    plt.figure(figsize=(10, 6))
+    df[col] = pd.qcut(df[col], 20, duplicates="drop")
+    lm = sns.barplot(data=df, x=col, y="Delinquent")
+    plt.xticks(rotation=30, ha='right')
+    plt.title(f"Delinquent vs. {col}")
+    plt.xlabel(f"{col} Intervals")
+    plt.ylabel("Delinquency Rate")
+    plt.tight_layout()
+    plt.savefig(f'graphs/delinquent_vs_{col}.png', dpi=300, bbox_inches='tight')
+    plt.show()
+\end{minted}
+
+\section{Part C: Model Training and Evaluation}
+
+\subsection{Logistic Regression Model}
+
+\begin{minted}[fontsize=\small, linenos]{python}
+df = pd.get_dummies(df, prefix_sep="_", drop_first=False, dtype=int)
+labels = df["Delinquent"]
+df = df.drop(columns="Delinquent")
+
+# Shuffle and split into training and test subsets, using random state 2025
+train_data, test_data, train_labels, test_labels = \
+    sklearn.model_selection.train_test_split(df, labels,
+                test_size=0.2, shuffle=True, random_state=2025)
+
+# Standardize the scale of all input columns
+train_means = train_data.mean()
+train_stds = train_data.std()
+train_data = (train_data - train_means) / train_stds
+test_data = (test_data - train_means) / train_stds
+
+# Create and train a new logistic regression classifier
+model = sklearn.linear_model.LogisticRegression(solver='newton-cg', tol=1e-6)
+# Train it with the training data and labels
+model.fit(train_data[cols], train_labels)
+# Get the prediction probabilities
+pred_proba = model.predict_proba(test_data[cols])[:, 1]
+\end{minted}
+
+\subsection{Model Performance Evaluation}
+
+\subsubsection{Precision-Recall Curve}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/precision_recall_curve.png}
+    \caption{Precision-Recall Curve}
+    \label{fig:pr_curve}
+\end{figure}
+
+\subsubsection{ROC Curve}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../graphs/roc_curve.png}
+    \caption{ROC Curve}
+    \label{fig:roc_curve}
+\end{figure}
+
+\subsection{Terminal Output for Model Performance}
+
+\begin{verbatim}
+Test AUC score: 0.8556
+Train AUC score: 0.8977
+\end{verbatim}
+
+\subsection{Comparison with Previous Model}
+
+\textbf{Did the new input columns help improve the predictions?}
+
+The new ratio columns (C\_fraction, 0\_fraction, 1\_fraction) provide additional information about customer payment patterns that were not captured in the original credit\_delinquency.csv. These features help the model better understand:
+
+\begin{itemize}
+    \item Payment behavior patterns (proportion of different payment statuses)
+    \item Customer credit management history
+    \item Risk indicators based on payment consistency
+\end{itemize}
+
+The improvement in AUC score and the shape of the ROC curve indicate that these new features contribute to better delinquency prediction.
+
+\section{Part D: Feature Importance Analysis}
+
+\subsection{Feature Coefficient Analysis}
+
+\begin{verbatim}
+Top 20 Most Important Features:
+                                  Feature  Abs_Coefficient
+0                              Unnamed: 0         1.130028
+13                             1_fraction         0.381867
+7                           DAYS_EMPLOYED         0.307303
+51            OCCUPATION_TYPE_Secretaries         0.259890
+1                           CODE_GENDER_M         0.225709
+42  OCCUPATION_TYPE_High skill tech staff         0.192249
+54   OCCUPATION_TYPE_Waiters/barmen staff         0.189574
+49          OCCUPATION_TYPE_Realty agents         0.170681
+37         OCCUPATION_TYPE_Cleaning staff         0.164098
+9                              FLAG_PHONE         0.161765
+6                              DAYS_BIRTH         0.157943
+45     OCCUPATION_TYPE_Low-skill Laborers         0.145098
+43               OCCUPATION_TYPE_IT staff         0.123097
+29               NAME_FAMILY_STATUS_Widow         0.122391
+22  NAME_EDUCATION_TYPE_Incomplete higher         0.118342
+20    NAME_EDUCATION_TYPE_Academic degree         0.117666
+41               OCCUPATION_TYPE_HR staff         0.117172
+40                OCCUPATION_TYPE_Drivers         0.100317
+2                            FLAG_OWN_CAR         0.097493
+17         NAME_INCOME_TYPE_State servant         0.089300
+\end{verbatim}
+
+\subsection{Analysis of New Column Importance}
+
+\textbf{How important are each of the new columns to your predictor?}
+
+Based on the coefficient magnitudes:
+
+\begin{verbatim}
+Importance of Ratio Columns:
+       Feature  Abs_Coefficient
+13  1_fraction         0.381867
+12  0_fraction         0.087761
+14  C_fraction         0.018866
+\end{verbatim}
+
+\textbf{Does this correlate with the improvement of the results?}
+
+Yes, to a certain point. 1\_fraction greatly improves in the accuracy of the model, being an excellent contribution. This directly correlates to the improvement of the model. However, 0\_fraction and C\_fraction didn't do as good. Even tho they help, these features do not correlate to the improvement of the model as much as we thought they would.
 \end{document}
